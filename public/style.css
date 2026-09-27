@@ -55,3 +55,11 @@ html,body{max-width:100%}
   .lbl{min-width:100%}
   #term-box{height:50vh;min-height:220px;padding:6px}
 }
+
+/* ---------- 5. sidebar drawer (mobile) ---------- */
+#sidebar{transition:transform .22s ease}
+@media (max-width:767.98px){
+  #sidebar{transform:translateX(-105%)}
+  #sidebar.open{transform:translateX(0)}
+  #sidebar-backdrop{z-index:45}
+}

@@ -13,12 +13,15 @@
 <body class="bg-bg text-text antialiased">
 <div class="min-h-screen">
 <!-- ============ SIDEBAR (desktop) ============ -->
-<aside class="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border bg-surface md:flex">
+<aside id="sidebar" class="fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r border-border bg-surface">
   <div class="flex items-center justify-between px-5 pb-4 pt-5">
     <div class="flex items-center gap-2.5 text-[17px] font-bold tracking-tight">
       <i data-lucide="server" class="h-[22px] w-[22px] text-accent-h"></i><span>Terwo</span>
     </div>
-    <button class="btn-theme btn-icon" title="Light mode" aria-label="Toggle theme"><i data-lucide="sun" class="h-4 w-4"></i></button>
+    <div class="flex items-center gap-1">
+      <button id="btn-sidebar-close" class="btn-icon md:hidden" aria-label="Close menu"><i data-lucide="x" class="h-4 w-4"></i></button>
+      <button class="btn-theme btn-icon" title="Light mode" aria-label="Toggle theme"><i data-lucide="sun" class="h-4 w-4"></i></button>
+    </div>
   </div>
   <nav class="flex flex-1 flex-col gap-1 overflow-y-auto px-3">
     <button class="tab flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted transition hover:bg-border/50 hover:text-text active" data-tab="dashboard"><i data-lucide="layout-dashboard" class="h-[19px] w-[19px]"></i><span>Dashboard</span></button>
@@ -35,25 +38,16 @@
     <button id="btn-logout" class="btn-ghost btn-sm"><i data-lucide="log-out" class="h-4 w-4"></i><span>Log out</span></button>
   </div>
 </aside>
+<div id="sidebar-backdrop" class="fixed inset-0 z-40 hidden bg-black/60 md:hidden"></div>
 <!-- ============ TOPBAR (mobile) ============ -->
 <div class="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur md:hidden">
-  <div class="flex items-center justify-between px-4 pt-3">
+  <div class="flex items-center justify-between px-4 py-3">
     <div class="flex items-center gap-2 text-[15px] font-bold tracking-tight">
+      <button id="btn-menu" class="btn-icon" aria-label="Open menu"><i data-lucide="menu" class="h-5 w-5"></i></button>
       <i data-lucide="server" class="h-5 w-5 text-accent-h"></i><span>Terwo</span>
     </div>
     <button class="btn-theme btn-icon" title="Light mode" aria-label="Toggle theme"><i data-lucide="sun" class="h-4 w-4"></i></button>
   </div>
-  <nav class="flex gap-2 overflow-x-auto px-4 py-3">
-    <button class="tab flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface2 px-3 py-1.5 text-xs font-medium text-muted active" data-tab="dashboard"><i data-lucide="layout-dashboard" class="h-4 w-4"></i><span>Dashboard</span></button>
-    <button class="tab flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface2 px-3 py-1.5 text-xs font-medium text-muted" data-tab="web"><i data-lucide="globe" class="h-4 w-4"></i><span>Website</span></button>
-    <button class="tab flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface2 px-3 py-1.5 text-xs font-medium text-muted" data-tab="db"><i data-lucide="database" class="h-4 w-4"></i><span>Database</span></button>
-    <button class="tab flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface2 px-3 py-1.5 text-xs font-medium text-muted" data-tab="files"><i data-lucide="folder" class="h-4 w-4"></i><span>Files</span></button>
-    <button class="tab flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface2 px-3 py-1.5 text-xs font-medium text-muted" data-tab="cron"><i data-lucide="clock" class="h-4 w-4"></i><span>Cron</span></button>
-    <button class="tab flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface2 px-3 py-1.5 text-xs font-medium text-muted" data-tab="backup"><i data-lucide="archive" class="h-4 w-4"></i><span>Backup</span></button>
-    <button class="tab flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface2 px-3 py-1.5 text-xs font-medium text-muted" data-tab="settings"><i data-lucide="settings" class="h-4 w-4"></i><span>Settings</span></button>
-    <button class="tab flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface2 px-3 py-1.5 text-xs font-medium text-muted" data-tab="term"><i data-lucide="square-terminal" class="h-4 w-4"></i><span>Terminal</span></button>
-    <button class="tab flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface2 px-3 py-1.5 text-xs font-medium text-muted" data-tab="install"><i data-lucide="store" class="h-4 w-4"></i><span>Store</span></button>
-  </nav>
 </div>
 
 <main class="p-4 md:ml-60 md:p-7">

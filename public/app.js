@@ -89,9 +89,28 @@ function showTab(id, push) {
   refreshIcons();
 }
 document.querySelectorAll('.tab').forEach((t) => {
-  t.addEventListener('click', () => showTab(t.dataset.tab, true));
+  t.addEventListener('click', () => { showTab(t.dataset.tab, true); if (window.innerWidth < 768) closeSidebar(); });
 });
 window.addEventListener('popstate', () => showTab(tabFromPath(), false));
+// ---------- mobile sidebar drawer ----------
+const sidebarEl = document.getElementById('sidebar');
+const backdropEl = document.getElementById('sidebar-backdrop');
+function closeSidebar() {
+  if (sidebarEl) sidebarEl.classList.remove('open');
+  if (backdropEl) backdropEl.classList.add('hidden');
+}
+function toggleSidebar() {
+  if (!sidebarEl) return;
+  const willOpen = !sidebarEl.classList.contains('open');
+  sidebarEl.classList.toggle('open', willOpen);
+  if (backdropEl) backdropEl.classList.toggle('hidden', !willOpen);
+}
+const menuBtn = document.getElementById('btn-menu');
+if (menuBtn) menuBtn.addEventListener('click', toggleSidebar);
+const sidebarCloseBtn = document.getElementById('btn-sidebar-close');
+if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', closeSidebar);
+if (backdropEl) backdropEl.addEventListener('click', closeSidebar);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSidebar(); });
 // initial tab is activated at the end of this file, once every let/const below is initialized
 
 // ---------- confirm dialog ----------
