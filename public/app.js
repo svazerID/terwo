@@ -435,6 +435,18 @@ document.getElementById('btn-term-conn').addEventListener('click', () => {
   termTabOpen();
   connectTerm();
 });
+document.getElementById('btn-term-new').addEventListener('click', async () => {
+  const ok = await confirmDialog({
+    title: 'Buat sesi terminal baru?',
+    message: 'Sesi saat ini akan dimatikan — termasuk semua proses yang sedang berjalan di dalamnya.',
+    okText: 'Buat sesi baru',
+    danger: true,
+  });
+  if (!ok) return;
+  termTabOpen();
+  if (termWs && termWs.readyState === 1) termWs.send(JSON.stringify({ t: 'new' }));
+  else connectTerm();
+});
 document.getElementById('btn-term-clear').addEventListener('click', () => {
   if (term) term.clear();
 });

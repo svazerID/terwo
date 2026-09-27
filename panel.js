@@ -1568,9 +1568,68 @@ async function handleRequest(req, res) {
 }
 
 // ================= Terminal via WebSocket (xterm.js + node-pty opsional) =================
+// SATU sesi terminal PERSISTEN: reload / reconnect tidak membunuh shell.
+// Klien yang (re)connect akan attach ke sesi yang sama + menerima scrollback terakhir.
 let ptyMod = null;
 try { ptyMod = require('node-pty'); } catch { /* opsional, fallback ke pipe */ }
 const wss = new WebSocket.Server({ noServer: true });
+
+let termSession = null; // { write(d), resize(c,r), kill(), clients:Set<ws>, scrollback:'' }
+const SCROLLBACK_MAX = 65536;
+
+function termBroadcast(data) {
+  if (!termSession) return;
+  for (const c of termSession.clients) {
+    try { if (c.readyState === 1) c.send(data); } catch {}
+  }
+}
+function termSessionDead(sess) {
+  if (termSession !== sess) return;
+  termSession = null;
+  const msg = '\r\n=== Sesi terminal berakhir (shell exit). Klik "Connect" untuk sesi baru. ===\r\n';
+  for (const c of sess.clients) {
+    try { if (c.readyState === 1) c.send(msg); } catch {}
+    try { c.close(); } catch {}
+  }
+  sess.clients.clear();
+}
+function spawnTermSession() {
+  const shell = process.env.SHELL || SHELL || 'sh';
+  const sess = { clients: new Set(), scrollback: '' };
+  const onOut = (d) => {
+    const s = d.toString('utf8');
+    sess.scrollback += s;
+    if (sess.scrollback.length > SCROLLBACK_MAX) sess.scrollback = sess.scrollback.slice(-SCROLLBACK_MAX);
+    for (const c of sess.clients) {
+      try { if (c.readyState === 1) c.send(s); } catch {}
+    }
+  };
+  if (ptyMod) {
+    const p = ptyMod.spawn(shell, [], { name: 'xterm-256color', cols: 80, rows: 24,
+      cwd: ROOT, env: Object.assign({}, process.env, { TERM: 'xterm-256color' }) });
+    p.onData(onOut);
+    sess.write = (d) => { try { p.write(d); } catch {} };
+    sess.resize = (c, r) => { try { p.resize(c, r); } catch {} };
+    sess.kill = () => { try { p.kill(); } catch {} };
+    p.on('exit', () => termSessionDead(sess));
+  } else {
+    const child = spawn(shell, [], { cwd: ROOT,
+      env: Object.assign({}, process.env, { TERM: 'xterm-256color' }) });
+    child.stdout.on('data', onOut);
+    child.stderr.on('data', onOut);
+    sess.write = (d) => { try { child.stdin.write(d); } catch {} };
+    sess.resize = () => {};
+    sess.kill = () => { try { child.kill(); } catch {} };
+    child.on('exit', () => termSessionDead(sess));
+  }
+  termSession = sess;
+  return sess;
+}
+function getTermSession() {
+  if (termSession) return { sess: termSession, fresh: false };
+  return { sess: spawnTermSession(), fresh: true };
+}
+
 server.on('upgrade', (req, socket, head) => {
   let ok = false;
   try {
@@ -1580,37 +1639,36 @@ server.on('upgrade', (req, socket, head) => {
   if (!ok) { socket.destroy(); return; }
   wss.handleUpgrade(req, socket, head, (ws) => {
     const shell = process.env.SHELL || SHELL || 'sh';
-    const send = (d) => { if (ws.readyState === 1) ws.send(d.toString('utf8')); };
-    let writeFn, resizeFn, killFn;
-    if (ptyMod) {
-      const p = ptyMod.spawn(shell, [], { name: 'xterm-256color', cols: 80, rows: 24,
-        cwd: ROOT, env: Object.assign({}, process.env, { TERM: 'xterm-256color' }) });
-      p.onData(send);
-      writeFn = (d) => { try { p.write(d); } catch {} };
-      resizeFn = (c, r) => { try { p.resize(c, r); } catch {} };
-      killFn = () => { try { p.kill(); } catch {} };
-      p.on('exit', () => { try { ws.close(); } catch {} });
+    const { sess, fresh } = getTermSession();
+    sess.clients.add(ws);
+    if (fresh) {
+      try { ws.send('\r\n=== Terminal siap (' + shell + (ptyMod ? ', pty' : ', pipe') + ') — sesi persisten, reload tidak mematikan shell ===\r\n'); } catch {}
     } else {
-      const child = spawn(shell, [], { cwd: ROOT,
-        env: Object.assign({}, process.env, { TERM: 'xterm-256color' }) });
-      child.stdout.on('data', send);
-      child.stderr.on('data', send);
-      writeFn = (d) => { try { child.stdin.write(d); } catch {} };
-      resizeFn = () => {};
-      killFn = () => { try { child.kill(); } catch {} };
-      child.on('exit', () => { try { ws.close(); } catch {} });
+      if (sess.scrollback) { try { ws.send(sess.scrollback); } catch {} }
+      try { ws.send('\r\n=== Tersambung kembali ke sesi terminal ===\r\n'); } catch {}
     }
     ws.on('message', (m) => {
       const s = m.toString();
       let msg = null;
       try { msg = JSON.parse(s); } catch { /* mentah seperti dulu */ }
-      if (msg && typeof msg === 'object' && msg.t === 'in') writeFn(msg.d || '');
-      else if (msg && typeof msg === 'object' && msg.t === 'rs') resizeFn(msg.c | 0 || 80, msg.r | 0 || 24);
-      else writeFn(s);
+      const cur = termSession || sess; // sesi bisa berganti setelah {t:'new'}
+      if (msg && typeof msg === 'object' && msg.t === 'in') cur.write(msg.d || '');
+      else if (msg && typeof msg === 'object' && msg.t === 'rs') cur.resize(msg.c | 0 || 80, msg.r | 0 || 24);
+      else if (msg && typeof msg === 'object' && msg.t === 'new') {
+        // sesi baru: matikan sesi lama, semua klien pindah ke sesi fresh
+        const clients = [...cur.clients];
+        termSession = null;
+        cur.kill();
+        const ns = spawnTermSession();
+        for (const c of clients) ns.clients.add(c);
+        termBroadcast('\r\n=== Sesi terminal baru (' + shell + (ptyMod ? ', pty' : ', pipe') + ') ===\r\n');
+      }
+      else cur.write(s);
     });
-    ws.on('close', killFn);
-    ws.on('error', killFn);
-    ws.send('\r\n=== Terminal siap (' + shell + (ptyMod ? ', pty' : ', pipe') + ') ===\r\n');
+    // WS putus (mis. reload): hanya detach, JANGAN bunuh shell
+    const detach = () => { const t = termSession || sess; if (t) t.clients.delete(ws); };
+    ws.on('close', detach);
+    ws.on('error', detach);
   });
 });
 
