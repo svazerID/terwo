@@ -408,6 +408,11 @@ function initTerm() {
     return true;
   });
   term.onData((d) => {
+    if (ctrlSticky || altSticky) {
+      if (ctrlSticky && /^[a-zA-Z]$/.test(d)) d = String.fromCharCode(d.toUpperCase().charCodeAt(0) - 64);
+      else if (altSticky && d.length === 1) d = '\x1b' + d;
+      ctrlSticky = false; altSticky = false; syncStickyKeys();
+    }
     if (termWs && termWs.readyState === 1) termWs.send(JSON.stringify({ t: 'in', d }));
   });
 }
@@ -457,6 +462,35 @@ document.getElementById('btn-term-paste').addEventListener('click', async () => 
   } catch (e) {
     alert('Clipboard is not accessible to the browser. Use Ctrl+Shift+V / right-click.');
   }
+});
+
+// ---------- terminal extra keys (mobile, ala Termux) ----------
+const TERM_KEYMAP = {
+  esc: '\x1b', tab: '\t', '|': '|', '/': '/',
+  pgup: '\x1b[5~', pgdn: '\x1b[6~',
+  home: '\x1b[H', end: '\x1b[F',
+  up: '\x1b[A', down: '\x1b[B', left: '\x1b[D', right: '\x1b[C',
+};
+let ctrlSticky = false, altSticky = false;
+function syncStickyKeys() {
+  document.querySelectorAll('#term-keys [data-k="ctrl"]').forEach((b) => b.classList.toggle('on', ctrlSticky));
+  document.querySelectorAll('#term-keys [data-k="alt"]').forEach((b) => b.classList.toggle('on', altSticky));
+}
+function termSendKey(d) {
+  if (termWs && termWs.readyState === 1) termWs.send(JSON.stringify({ t: 'in', d }));
+}
+document.querySelectorAll('#term-keys .tk').forEach((b) => {
+  b.addEventListener('click', () => {
+    const k = b.dataset.k;
+    if (k === 'ctrl') { ctrlSticky = !ctrlSticky; if (ctrlSticky) altSticky = false; syncStickyKeys(); return; }
+    if (k === 'alt') { altSticky = !altSticky; if (altSticky) ctrlSticky = false; syncStickyKeys(); return; }
+    let d = Object.prototype.hasOwnProperty.call(TERM_KEYMAP, k) ? TERM_KEYMAP[k] : k;
+    if (ctrlSticky && /^[a-zA-Z]$/.test(d)) d = String.fromCharCode(d.toUpperCase().charCodeAt(0) - 64);
+    else if (altSticky && d.length === 1) d = TERM_KEYMAP.esc + d;
+    ctrlSticky = false; altSticky = false; syncStickyKeys();
+    termSendKey(d);
+    try { if (term) term.focus(); } catch {}
+  });
 });
 
 // ---------- dashboard ----------

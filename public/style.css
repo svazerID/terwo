@@ -63,3 +63,17 @@ html,body{max-width:100%}
   #sidebar.open{transform:translateX(0)}
   #sidebar-backdrop{z-index:45}
 }
+
+/* ---------- 6. terminal extra keys (mobile, ala Termux) ---------- */
+#term-keys{display:none}
+@media (max-width:767.98px){
+  #term-keys{display:block;margin:8px 0 2px}
+  .tk-row{display:flex;gap:6px;overflow-x:auto;margin-bottom:6px;scrollbar-width:none}
+  .tk-row::-webkit-scrollbar{display:none}
+  .tk{flex:1 0 auto;min-width:52px;padding:11px 4px;border-radius:9px;cursor:pointer;
+    background:var(--c-surface2);border:1px solid var(--c-border);
+    color:var(--color-text);font-size:13px;font-weight:700;letter-spacing:.02em;
+    touch-action:manipulation;user-select:none;-webkit-user-select:none}
+  .tk:active{background:var(--c-muted)}
+  .tk.on{background:var(--c-accent);border-color:var(--c-accent);color:#0b0e11}
+}
